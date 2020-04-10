@@ -10,7 +10,7 @@ public class MultiClient {
 
 	public static void main(String[] args) {
 
-		
+		//.
 		System.out.println("이름을 입력하세요");
 		Scanner scanner = new Scanner(System.in);
 		String s_name = scanner.nextLine();
@@ -66,10 +66,6 @@ public class MultiClient {
 						out.println(s2);
 					}
 					
-					//클라이언트가 q를입력하면 소켓과 스트림이 모두 종료됨.
-					//in.close();
-					//out.close();
-					//socket.close();
 				} catch (Exception e) {
 					System.out.println("예외: " + e);
 				}
