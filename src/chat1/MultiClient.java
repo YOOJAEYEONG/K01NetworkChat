@@ -37,7 +37,7 @@ public class MultiClient {
 			
 			/*
 			InputStreamReader / OutputStreamReader
-			바이트트스림과 문자스트림의 상호변환을 제공하는 입출력 스트림이다.
+			바이트스트림과 문자스트림의 상호변환을 제공하는 입출력 스트림이다.
 			바이트를 읽어서 지정된 문자 인코딩에 따라 문자로 변환하는데 사용한다.
 			 */
 			out = new PrintWriter(socket.getOutputStream(), true);
