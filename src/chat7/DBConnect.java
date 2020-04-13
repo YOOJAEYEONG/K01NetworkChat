@@ -7,7 +7,7 @@ interface DBConnect {
 	String ID = "kosmo";
 	String PASS = "1234";
 	
-	
+	void execute(String name, String talk); 
 	
 	
 }

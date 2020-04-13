@@ -130,13 +130,12 @@ public class MultiServer {
 			try {
 				
 				name = in.readLine();
-				//접속한 클라이언트에게 새로운 사용자의 입장을 알림.
-				//이 접속자는 아직 해쉬맵에 저장되기 전이므로 
-				//접속자를 제외한 나머지 클라이언트만 입장메세지를 받는다.
+
 				sendAllMsg("", name+" 님이 입장하셨습니다.");
 				
 				//현재 접속한 클라이언트를 HashMap에 저장한다.
 				clientMap.put(name, out);
+				dbHandler.execute(name, "");
 				
 				//HashMap에 저장된 객체의 수로 접속자수를 파악할 수 있다.
 				System.out.println(name + " 접속");
