@@ -111,6 +111,8 @@ public class MultiServer {
 		Socket socket;
 		PrintWriter out = null;
 		BufferedReader in = null;
+		private boolean setWhisper = false;
+		String toWhisper = "";
 		
 		//생성자 : Socket을 기반으로 입출력 스트림을 생성한다.
 		public MultiServerT(Socket socket) {
@@ -118,19 +120,21 @@ public class MultiServer {
 			try {
 				out = new PrintWriter(
 						this.socket.getOutputStream(), true);
-				in = new BufferedReader(
-						new InputStreamReader(
+				
+				in = new BufferedReader(new InputStreamReader(
 								this.socket.getInputStream(), "UTF-8"));
 			} catch (Exception e) {
 				System.out.println("예외:"+ e);
 			}
 		}
 		
+		
 		@Override
 		public void run() {
 			
 			String name = "";
 			String s = "";
+			Commands commands = null;
 			
 			try {
 				
@@ -155,19 +159,28 @@ public class MultiServer {
 					s = in.readLine();
 					s = URLDecoder.decode(s, "UTF-8");
 					
+					dbHandler.execute(name, s);
+					System.out.println(name + "> "+ s);
 					
 					if(s == null) break;
 					else if(s.charAt(0)=='/') {
-						commends(s);
+						commands = new Commands(name, s);
+						
+						continue;
+					}
+					else if(setWhisper==true) {
+						commands.whisper(s);
+						
 						continue;
 					}
 					
-					System.out.println(name + " >>"+ s);
+					
+					
 					sendAllMsg(name, s);
-					dbHandler.execute(name, s);
+					
 				}
 			} catch (Exception e) {
-				System.out.println("예외: "+ e);
+				e.printStackTrace();
 			}
 			finally {
 				/*
@@ -194,40 +207,74 @@ public class MultiServer {
 			}
 		}//run()
 		
-		public void commends(String commend) {
-			String[] cmdArr = commend.split(" ");
-			//	/to 이름 메시지
+		
+		class Commands {
 			
-			try {
-				//접속자리스트보기
-				if(cmdArr[0].equals("/list")) {
-					out.println(clientMap.keySet());
+			String[] msgArr;
+			String commander;
+			String order;
+			String toName;
+			StringBuffer msg = new StringBuffer("");
+			
+			
+			public Commands() {	}
+			public Commands(String name, String fullmsg) {
+				
+				commander = name;
+				msgArr = fullmsg.split(" ");
+				order = msgArr[0];
+				toName = (msgArr.length>=2) ? msgArr[1] : "";
+				
+				//공백으로 쪼개진 스트링 배열의 메세지 부분을 다시 합침
+				for(int i=2 ; i<msgArr.length ; i++) {
+					msg = msg.append(" "+msgArr[i]);
 				}
-			
-			
-				if(cmdArr[0].equals("/to")) {
+				
+				
+				switch (order) {
+				case "/list":
+					showList();	break;
+				case "/to":
+					whisper(); 	break;//귓속말을 셋팅하고 다시보낼때는 메세지만 입력하는데
+					//이경우에도 split이 실행되는 문제
 					
-					
-					StringBuffer message = new StringBuffer(cmdArr[2]);
-					if(cmdArr.length>3) {
-						
-						for(int i=3 ; i < cmdArr.length ; i++) {
-							message.append(" "+cmdArr[i]);
-						}
-					}
-					
-					//상대방에게 귓속말하기
-					clientMap.get(cmdArr[1]).println("["+cmdArr[1]+"] : "+message);
-					
-					//귓속말 대화 고정 /해제 (수정필요)
-//					if(cmdArr.length == 2) {
-//						
-//					}
+				default:
+					System.out.println("Commands의 디폴트");
+					break;
 				}
-			} catch (IndexOutOfBoundsException | NullPointerException e) {
-				e.printStackTrace();
+				
 			}
-		}
+			
+			void showList() {
+				Iterator<String> it	= clientMap.keySet().iterator();
+				while(it.hasNext()) {
+					out.println(it.next());
+				}
+			}
+
+			void whisper() {
+				if(msg.toString().equals("")) {
+					if(setWhisper==true) {
+						setWhisper  = false;
+						clientMap.get(commander).println(toName+"에게 귓속말 고정 해제");
+					}
+					else if(setWhisper==false) {
+						setWhisper  = true;
+					clientMap.get(commander).println(toName+"에게 귓속말 고정 설정");
+					}
+				}
+				else {
+					clientMap.get(toName).println("["+commander+"] : " + msg);
+				}
+			}
+			
+			void whisper(String msg) {
+				clientMap.get(toName).println("["+commander+"] : " + msg);
+			}
+		}//Command
+		
+		
+	
 		
 		
 	}//내부클래스 : MultiServerT
