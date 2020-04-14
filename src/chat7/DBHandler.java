@@ -7,7 +7,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.Statement;
-import java.util.Scanner;
 
 public class DBHandler implements DBConnect{
 	
@@ -31,9 +30,11 @@ public class DBHandler implements DBConnect{
 				setDBTable();
 			}
 			
-		} catch (ClassNotFoundException | SQLException e) {
+		} catch ( SQLException e) {
 			e.printStackTrace();
-		} 
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	
@@ -43,7 +44,7 @@ public class DBHandler implements DBConnect{
 				String sqlCreateTable = 
 						" CREATE TABLE chating_tb( " + 
 								"	 seqNum NUMBER PRIMARY KEY, " +
-								"    name NVARCHAR2(20) NOT NULL , " + 
+								"    name NVARCHAR2(20) , " + 
 								"    contents NVARCHAR2(100) , " + 
 								"    time DATE DEFAULT SYSDATE " +
 								" ) ";
@@ -67,41 +68,36 @@ public class DBHandler implements DBConnect{
 				System.out.println("기존 테이블을 계속사용합니다.");
 			} catch (SQLException e) {
 				e.printStackTrace();
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
 	}
 	
-	
-	
-	
 	public void execute(String name, String talk) {
 		try {
+			System.out.println(name+talk);
 			
 			
 			String query = 
-					" INSERT INTO chating_tb VALUES ("
-					+ " seq_chating_tb_num.nextval, ?, ?, DEFAULT) ";
+					" INSERT INTO chating_tb VALUES " +
+					" (seq_chating_seqNum.nextval, ?, ?, DEFAULT) ";
 			
 			//prepared객체 생성 : 생성시 준비한 쿼리문을 인자로 전달한다.
 			psmt = con.prepareStatement(query);
-			
-			//3. DB에 입력값을 사용자로부터 입력받음
 			//4. 인파라메터 설정하기 : ?의 순서대로 설정하고 DB이므로 인덱스는 1부터 시작
 			psmt.setString(2, name);
 			psmt.setString(3, talk);
+			psmt.executeUpdate();
 			
-			
-			//쿼리 실행및 결과값 반환
-			int affected = psmt.executeUpdate();
-			System.out.println(affected+"행이 입력되었습니다.");
-		} catch (SQLException | NullPointerException e) {
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} catch (NullPointerException e) {
 			e.printStackTrace();
 		}
-		finally {
-			//자원반납
-			close();
-		}
+		
 	
-	}
+	}//execute()
+	
 	
 	public void close() {
 		try {

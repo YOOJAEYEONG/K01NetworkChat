@@ -9,13 +9,17 @@ public class MultiClient {
 
 		@SuppressWarnings("resource")
 		Scanner scanner = new Scanner(System.in);
-		String s_name = scanner.nextLine();
 		String ServerIP = "localhost";
 		
 		if(args.length > 0) {ServerIP = args[0];}
 		
 		
 		System.out.println("이름을 입력하세요");
+		String s_name = scanner.nextLine();
+		
+//		try {
+//			
+//		} catch (UnsupportedEncodingException e) {}
 		try {
 			
 			Socket socket = new Socket(ServerIP, 9999);

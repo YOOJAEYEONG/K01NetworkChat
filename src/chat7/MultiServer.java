@@ -147,10 +147,14 @@ public class MultiServer {
 				//클라이언트의 메세지를 읽어온후 콘솔에 출력하고 echo한다.
 				while (in != null) {
 					s = in.readLine();
+					
+					
+					
 					if(s == null) break;
 					
 					System.out.println(name + " >>"+ s);
 					sendAllMsg(name, s);
+					dbHandler.execute(name, s);
 				}
 			} catch (Exception e) {
 				System.out.println("예외: "+ e);

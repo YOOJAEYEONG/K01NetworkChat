@@ -29,7 +29,7 @@ public class Sender extends Thread{
 	@Override
 	public void run() {
 		Scanner s = new Scanner(System.in);
-		
+//		s = URLDecoder
 		
 		try {
 			//클라이언트가 입력한 "대화명"을 서버로 전송한다.
