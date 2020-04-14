@@ -91,8 +91,6 @@ public class DBHandler implements DBConnect{
 		} catch (NullPointerException e) {
 			e.printStackTrace();
 		}
-		
-	
 	}//execute()
 	
 	

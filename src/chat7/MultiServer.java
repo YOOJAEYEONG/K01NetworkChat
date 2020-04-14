@@ -74,26 +74,23 @@ public class MultiServer {
 		//Map에 저장된 객체의 키값(이름)을 먼저 얻어온다.
 		Iterator<String> it	= clientMap.keySet().iterator();
 		
-		//저장된 객체의 (클라이언트)갯수만큼 반복한다.
 		while (it.hasNext()) {
 			try {
 				//각 클라이언트의 PrintWriter객체를 얻어온다.
-				
-				PrintWriter it_out = 
-						(PrintWriter)clientMap.get(it.next());
+				String who = it.next();
+				PrintWriter it_out = (PrintWriter)clientMap.get(who);
 				
 				//클라이언트에게 메세지를 전달한다.
 				
 				/*매개변수로 전달된이름이 없는경우에는 메세지만 echo한다.
 					있는경우에는 이름+메세지를 전달한다.	*/
 				
-				
 				if(name.equals("")) {
 					//해쉬맵에 저장되어있는 클라이언트들에게 메세지를 전달한다.
 					//따라서 접속자를 제외한 나머지 클라이언트만 입장메세지를 받는다.
 					it_out.println(URLEncoder.encode(msg, "UTF-8"));
 				}
-				else if( ) {
+				else if(name.equals(who) ) {
 					it_out.println(msg); 
 				}
 				else {
@@ -160,6 +157,10 @@ public class MultiServer {
 					
 					
 					if(s == null) break;
+					else if(s.charAt(0)=='/') {
+						commends(s);
+						continue;
+					}
 					
 					System.out.println(name + " >>"+ s);
 					sendAllMsg(name, s);
@@ -190,6 +191,41 @@ public class MultiServer {
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
+			}
+		}//run()
+		
+		public void commends(String commend) {
+			String[] cmdArr = commend.split(" ");
+			//	/to 이름 메시지
+			
+			try {
+				//접속자리스트보기
+				if(cmdArr[0].equals("/list")) {
+					out.println(clientMap.keySet());
+				}
+			
+			
+				if(cmdArr[0].equals("/to")) {
+					
+					
+					StringBuffer message = new StringBuffer(cmdArr[2]);
+					if(cmdArr.length>3) {
+						
+						for(int i=3 ; i < cmdArr.length ; i++) {
+							message.append(" "+cmdArr[i]);
+						}
+					}
+					
+					//상대방에게 귓속말하기
+					clientMap.get(cmdArr[1]).println("["+cmdArr[1]+"] : "+message);
+					
+					//귓속말 대화 고정 /해제 (수정필요)
+//					if(cmdArr.length == 2) {
+//						
+//					}
+				}
+			} catch (IndexOutOfBoundsException | NullPointerException e) {
+				e.printStackTrace();
 			}
 		}
 		
