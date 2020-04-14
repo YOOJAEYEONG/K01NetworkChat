@@ -5,6 +5,8 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -33,7 +35,6 @@ public class MultiServer {
 	public void init() {
 		try {
 			serverSocket = new ServerSocket(9999);
-			System.out.println("서버가 시작되었습니다.");
 			
 			//서버시작후 DB테이블 생성 및 연동 준비
 			dbHandler = new DBHandler();
@@ -77,23 +78,30 @@ public class MultiServer {
 		while (it.hasNext()) {
 			try {
 				//각 클라이언트의 PrintWriter객체를 얻어온다.
+				
 				PrintWriter it_out = 
 						(PrintWriter)clientMap.get(it.next());
 				
 				//클라이언트에게 메세지를 전달한다.
+				
 				/*매개변수로 전달된이름이 없는경우에는 메세지만 echo한다.
-					있는경우에는 이름+메세지를 전달한다.
-				*/
+					있는경우에는 이름+메세지를 전달한다.	*/
+				
+				
 				if(name.equals("")) {
 					//해쉬맵에 저장되어있는 클라이언트들에게 메세지를 전달한다.
 					//따라서 접속자를 제외한 나머지 클라이언트만 입장메세지를 받는다.
-					it_out.println(msg);
+					it_out.println(URLEncoder.encode(msg, "UTF-8"));
+				}
+				else if( ) {
+					it_out.println(msg); 
 				}
 				else {
-					it_out.println("["+name+"]: "+msg);
+					it_out.println("["+name+"]: " + msg);
 				}
 			} catch (Exception e) {
 				System.out.println("예외3: "+ e);
+				e.printStackTrace();
 			}
 			
 		}
@@ -115,7 +123,7 @@ public class MultiServer {
 						this.socket.getOutputStream(), true);
 				in = new BufferedReader(
 						new InputStreamReader(
-								this.socket.getInputStream()));
+								this.socket.getInputStream(), "UTF-8"));
 			} catch (Exception e) {
 				System.out.println("예외:"+ e);
 			}
@@ -130,12 +138,13 @@ public class MultiServer {
 			try {
 				
 				name = in.readLine();
-
+				name = URLDecoder.decode(name, "UTF-8");
+				
 				sendAllMsg("", name+" 님이 입장하셨습니다.");
 				
 				//현재 접속한 클라이언트를 HashMap에 저장한다.
 				clientMap.put(name, out);
-				dbHandler.execute(name, "");
+				dbHandler.execute(name, "[입장]");
 				
 				//HashMap에 저장된 객체의 수로 접속자수를 파악할 수 있다.
 				System.out.println(name + " 접속");
@@ -147,7 +156,7 @@ public class MultiServer {
 				//클라이언트의 메세지를 읽어온후 콘솔에 출력하고 echo한다.
 				while (in != null) {
 					s = in.readLine();
-					
+					s = URLDecoder.decode(s, "UTF-8");
 					
 					
 					if(s == null) break;
@@ -164,8 +173,9 @@ public class MultiServer {
 				클라이언트가 접속을 종료하면 예외가 발생하게 되어 finally로 넘어온다.
 				이때 대화명을 통해 해당 객체를 찾아 remove()시킨다.
 				 */
-				clientMap.remove(name);
+				clientMap.remove(name);		
 				sendAllMsg("", name+"님이 퇴장하셨습니다.");
+				dbHandler.execute(name, "[퇴장]");
 				
 				//퇴장하는 클라이언트의 쓰레드명을 보여준다.
 				System.out.println(

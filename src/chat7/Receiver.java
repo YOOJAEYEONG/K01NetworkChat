@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.URLDecoder;
 
 public class Receiver extends Thread {
 
@@ -17,23 +18,19 @@ public class Receiver extends Thread {
 		try {
 			in = new BufferedReader(
 					new InputStreamReader(
-							this.socket.getInputStream()));
+							this.socket.getInputStream(), "UTF-8"));
 		} catch (Exception e) {
 			System.out.println("예외>Receiver>생성자: "+ e);
 		}
 	}
-	/*
-	Thread에서 main()역할을 하는 함수로 직접호출하면 안되고
-	반드시 start()를 통해 간섭호출해야 쓰레드가 생성됨.
-	프로그램 시작시 main()호출이 없음에도 자동으로 main()가 실행됨을 참고
-	 */
+
 	@Override
 	public void run() {
 		//소켓이 종료되면 while()을 벗어나서 input스트림을 종료한다.
 		while (in != null) {
 			try {
 				System.out.println(
-						"Thread Receive : "+ in.readLine());
+						">>"+URLDecoder.decode(in.readLine(), "UTF-8"));
 			} catch (SocketException e) {
 				System.out.println("SocketException 발생됨");
 				break;

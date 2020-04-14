@@ -44,7 +44,7 @@ public class DBHandler implements DBConnect{
 				String sqlCreateTable = 
 						" CREATE TABLE chating_tb( " + 
 								"	 seqNum NUMBER PRIMARY KEY, " +
-								"    name NVARCHAR2(20) , " + 
+								"    name NVARCHAR2(100) , " + 
 								"    contents NVARCHAR2(100) , " + 
 								"    time DATE DEFAULT SYSDATE " +
 								" ) ";
@@ -53,7 +53,7 @@ public class DBHandler implements DBConnect{
 				System.out.println("chating_tb : 테이블생성됨");
 				
 				String sqlNewSequence = 
-						"CREATE SEQUENCE seq_chating_seqNum " + 
+						"CREATE SEQUENCE seq_chating_Num " + 
 								"    increment by 1 " + 
 								"    start with 1 " + 
 								"    nomaxvalue " + 
@@ -62,7 +62,7 @@ public class DBHandler implements DBConnect{
 								"    nocache ";
 				stmt = con.createStatement();
 				rs = stmt.executeQuery(sqlNewSequence);
-				System.out.println("seq_chating 시퀀스 생성됨");
+				System.out.println("seq_chating_Num 시퀀스 생성됨");
 				
 			} catch (SQLSyntaxErrorException e) {
 				System.out.println("기존 테이블을 계속사용합니다.");
@@ -75,18 +75,15 @@ public class DBHandler implements DBConnect{
 	
 	public void execute(String name, String talk) {
 		try {
-			System.out.println(name+talk);
-			
-			
 			String query = 
-					" INSERT INTO chating_tb VALUES " +
-					" (seq_chating_seqNum.nextval, ?, ?, DEFAULT) ";
+					" INSERT INTO chating_tb VALUES ( " +
+					" seq_chating_Num.nextval, ?, ?, DEFAULT ) ";
 			
 			//prepared객체 생성 : 생성시 준비한 쿼리문을 인자로 전달한다.
 			psmt = con.prepareStatement(query);
-			//4. 인파라메터 설정하기 : ?의 순서대로 설정하고 DB이므로 인덱스는 1부터 시작
-			psmt.setString(2, name);
-			psmt.setString(3, talk);
+			//4. 인파라메터 설정하기 : 컬럼의 순이 아닌 ?의 순서대로 설정한다(DB는 참고로 인덱스 1부터 시작)
+			psmt.setString(1, name);
+			psmt.setString(2, talk);
 			psmt.executeUpdate();
 			
 		} catch (SQLException e) {
