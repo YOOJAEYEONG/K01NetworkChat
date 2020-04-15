@@ -104,6 +104,22 @@ public class MultiServer {
 		}
 	}
 			
+	public String checkDuplicate(String name) {
+		int addName = 1;
+		String copy = name;
+		while(clientMap.containsKey(copy)){	
+			System.out.println("중복발견");
+			copy += addName++;
+			
+		}
+		System.out.println("중복체크 최종결과  "+copy);//ee1
+		return copy;
+			
+		
+	}
+	
+	
+	
 	//내부크래스
 	class MultiServerT extends Thread {
 		
@@ -113,6 +129,7 @@ public class MultiServer {
 		BufferedReader in = null;
 		private boolean setWhisper = false;
 		String toWhisper = "";
+		
 		
 		//생성자 : Socket을 기반으로 입출력 스트림을 생성한다.
 		public MultiServerT(Socket socket) {
@@ -124,14 +141,13 @@ public class MultiServer {
 				in = new BufferedReader(new InputStreamReader(
 								this.socket.getInputStream(), "UTF-8"));
 			} catch (Exception e) {
-				System.out.println("예외:"+ e);
+				e.printStackTrace();
 			}
 		}
 		
 		
 		@Override
 		public void run() {
-			
 			String name = "";
 			String s = "";
 			Commands commands = null;
@@ -140,9 +156,10 @@ public class MultiServer {
 				
 				name = in.readLine();
 				name = URLDecoder.decode(name, "UTF-8");
+				name = checkDuplicate(name);
+				
 				
 				sendAllMsg("", name+" 님이 입장하셨습니다.");
-				
 				//현재 접속한 클라이언트를 HashMap에 저장한다.
 				clientMap.put(name, out);
 				dbHandler.execute(name, "[입장]");
@@ -192,8 +209,7 @@ public class MultiServer {
 				dbHandler.execute(name, "[퇴장]");
 				
 				//퇴장하는 클라이언트의 쓰레드명을 보여준다.
-				System.out.println(
-						name+"["+Thread.currentThread().getName()+"] 퇴장");
+				System.out.println("["+name+"] 퇴장");
 				
 				System.out.println("현재 접속자수는 "+clientMap.size()+"명입니다.");
 				
@@ -208,6 +224,9 @@ public class MultiServer {
 		}//run()
 		
 		
+		
+
+
 		class Commands {
 			
 			String[] msgArr;
@@ -239,7 +258,10 @@ public class MultiServer {
 					//이경우에도 split이 실행되는 문제
 					
 				default:
-					System.out.println("Commands의 디폴트");
+					System.out.println("잘못된 명령어입니다.");
+					System.out.println("/list : 접속자 리스트 보기");
+					System.out.println("/to [이름] [메세지] : 귓속말보내기");
+					System.out.println("/to [이름] : 귓속말 설정 고정/해제");
 					break;
 				}
 				
