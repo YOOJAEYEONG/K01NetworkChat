@@ -30,7 +30,7 @@ public class Sender extends Thread{
 	@Override
 	public void run() {
 		Scanner scan = new Scanner(System.in);
-		
+		String msg = null;
 		
 		try {
 			//클라이언트가 입력한 "대화명"을 서버로 전송한다.
@@ -39,8 +39,10 @@ public class Sender extends Thread{
 			//Q를 입력하기전가지의 메세지를 서버로 전송한다.
 			while (out != null) {
 				try {
-					String msg = scan.nextLine();
-					msg = URLEncoder.encode(msg, "UTF-8");
+					
+					
+						msg = scan.nextLine();
+						msg = URLEncoder.encode(msg, "UTF-8");
 					if(msg.equalsIgnoreCase("Q")) {
 						break;
 					}

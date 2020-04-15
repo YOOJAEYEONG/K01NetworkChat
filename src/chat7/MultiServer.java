@@ -3,24 +3,44 @@ package chat7;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Scanner;
 
+/*
+MultiServer
+	ㄴsendAllMsg() - toName 호출 시도
+	MultiServerT
+		Commands
+			ㄴtoName
+				
+				
+ */
 public class MultiServer {
 
 	static ServerSocket serverSocket = null;
 	static Socket socket = null;
 	DBHandler dbHandler;
 	
+	
+	
+	
 	//클라이언트 정보 저장을 위한 Map컬렉션 정의
 	Map<String, PrintWriter> clientMap;
 	
+	//클라이언트의 IP주소를 저장할 set컬렉션
+	HashSet<InetAddress> blacklist;
+	InetAddress address;
+	
+	HashSet<String> banWords = new HashSet<String>();
 	
 	public MultiServer() {
 		//클라이언트의 이름과 출력스트림을 저장할 HashMap생성
@@ -28,7 +48,7 @@ public class MultiServer {
 		//HashMap동기화 설정. 쓰레드가 사용자정보에 동시에 접근하는것을 차단한다.
 		Collections.synchronizedMap(clientMap);
 		
-		
+		blacklist = new HashSet<InetAddress>();
 	}
 	
 	//서버 초기화
@@ -39,15 +59,38 @@ public class MultiServer {
 			//서버시작후 DB테이블 생성 및 연동 준비
 			dbHandler = new DBHandler();
 			
-			/*
-			클라이언트의 메세지를 모든 클라이언트에게 전달하기 위한 
-			쓰레드 생성및 start.
-			*/
-			while (true) {
+			InetAddress address;
+			Scanner scan = new Scanner(System.in);
+			
+			while (true) {				
 				socket = serverSocket.accept();
+				System.out.println( "신규접속IP"+socket.getInetAddress() );
+				
+				address = socket.getInetAddress();
+				
+				System.out.println("블랙리스트 추가 : 1");
+				System.out.println("블랙리스트 확인 : 2 ");
+				System.out.println("접속허용은 아무키나 누르시오");
+				
+				String input = scan.nextLine();
+				
+				if(input.equals("1")) {
+					System.out.println("블랙리스트추가 "+ blacklist.add(address));
+				}
+				if(input.equals("2")) {
+					System.out.println("블랙리스트 명단");
+					System.out.println(blacklist);
+				}
+				if(blacklist.contains(address)) {
+					System.out.println("2");
+					socket = null;
+					System.out.println(address+"는 차단되었습니다." );
+					continue;
+				}
 				
 				Thread mst = new MultiServerT(socket);
 				mst.start();
+				
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -62,6 +105,8 @@ public class MultiServer {
 		}
 	}
 	
+	
+
 	//메인메소드 : Server객체를 생성하고 초기화한다
 	public static void main(String[] args) {
 		new MultiServer().init();
@@ -91,11 +136,13 @@ public class MultiServer {
 					it_out.println(URLEncoder.encode(msg, "UTF-8"));
 				}
 				else if(name.equals(who) ) {
+					//보낸사람과 보낼대상(who)과  같은경우 echo 설정
 					it_out.println(msg); 
 				}
 				else {
 					it_out.println("["+name+"]: " + msg);
 				}
+				
 			} catch (Exception e) {
 				System.out.println("예외3: "+ e);
 				e.printStackTrace();
@@ -120,15 +167,37 @@ public class MultiServer {
 	
 	
 	
+	public String banWords(String str) {
+	
+		Iterator<String> it = banWords.iterator();
+		String text=str;
+		while(it.hasNext()) {
+			String word = it.next();
+			if(str.contentEquals(word)) {
+				text = str.replace(word, "***");
+			}
+			
+		}
+
+		return text;
+	}
+	
+	
 	//내부크래스
-	class MultiServerT extends Thread {
+	public class MultiServerT extends Thread {
 		
 		//멤버변수
 		Socket socket;
 		PrintWriter out = null;
 		BufferedReader in = null;
-		private boolean setWhisper = false;
+		boolean setWhisper = false;
+		boolean setQuiet = false;
 		String toWhisper = "";
+		String toQuiet = "";
+		Commands commands = null;
+		
+		
+		
 		
 		
 		//생성자 : Socket을 기반으로 입출력 스트림을 생성한다.
@@ -150,13 +219,20 @@ public class MultiServer {
 		public void run() {
 			String name = "";
 			String s = "";
-			Commands commands = null;
+			
+			
+			
+			
+			
+			
 			
 			try {
-				
 				name = in.readLine();
 				name = URLDecoder.decode(name, "UTF-8");
 				name = checkDuplicate(name);
+				
+				
+				
 				
 				
 				sendAllMsg("", name+" 님이 입장하셨습니다.");
@@ -179,9 +255,15 @@ public class MultiServer {
 					dbHandler.execute(name, s);
 					System.out.println(name + "> "+ s);
 					
-					if(s == null) break;
-					else if(s.charAt(0)=='/') {
-						commands = new Commands(name, s);
+					
+					//대화 금칙어 필터링
+					s = banWords(s);
+					
+					if(s == null ) break;
+					
+					
+					if(s.length()>1 && s.charAt(0)=='/') {
+						commands = new Commands(name, s, socket);
 						
 						continue;
 					}
@@ -190,8 +272,9 @@ public class MultiServer {
 						
 						continue;
 					}
-					
-					
+					else if(setQuiet==true) {
+						commands.quiet();
+					}
 					
 					sendAllMsg(name, s);
 					
@@ -226,74 +309,6 @@ public class MultiServer {
 		
 		
 
-
-		class Commands {
-			
-			String[] msgArr;
-			String commander;
-			String order;
-			String toName;
-			StringBuffer msg = new StringBuffer("");
-			
-			
-			public Commands() {	}
-			public Commands(String name, String fullmsg) {
-				
-				commander = name;
-				msgArr = fullmsg.split(" ");
-				order = msgArr[0];
-				toName = (msgArr.length>=2) ? msgArr[1] : "";
-				
-				//공백으로 쪼개진 스트링 배열의 메세지 부분을 다시 합침
-				for(int i=2 ; i<msgArr.length ; i++) {
-					msg = msg.append(" "+msgArr[i]);
-				}
-				
-				
-				switch (order) {
-				case "/list":
-					showList();	break;
-				case "/to":
-					whisper(); 	break;//귓속말을 셋팅하고 다시보낼때는 메세지만 입력하는데
-					//이경우에도 split이 실행되는 문제
-					
-				default:
-					System.out.println("잘못된 명령어입니다.");
-					System.out.println("/list : 접속자 리스트 보기");
-					System.out.println("/to [이름] [메세지] : 귓속말보내기");
-					System.out.println("/to [이름] : 귓속말 설정 고정/해제");
-					break;
-				}
-				
-			}
-			
-			void showList() {
-				Iterator<String> it	= clientMap.keySet().iterator();
-				while(it.hasNext()) {
-					out.println(it.next());
-				}
-			}
-
-			void whisper() {
-				if(msg.toString().equals("")) {
-					if(setWhisper==true) {
-						setWhisper  = false;
-						clientMap.get(commander).println(toName+"에게 귓속말 고정 해제");
-					}
-					else if(setWhisper==false) {
-						setWhisper  = true;
-					clientMap.get(commander).println(toName+"에게 귓속말 고정 설정");
-					}
-				}
-				else {
-					clientMap.get(toName).println("["+commander+"] : " + msg);
-				}
-			}
-			
-			void whisper(String msg) {
-				clientMap.get(toName).println("["+commander+"] : " + msg);
-			}
-		}//Command
 		
 		
 	
@@ -301,6 +316,129 @@ public class MultiServer {
 		
 	}//내부클래스 : MultiServerT
 
+	public class Commands extends MultiServerT{
+		
+		String[] msgArr;
+		String commander;
+		String order;
+		String toName = "";
+		StringBuffer msg = new StringBuffer("");
+		
+		
+		public Commands(Socket socket) {
+			super(socket);
+		}
+		public Commands(String name, String fullmsg, Socket socket) {
+			super(socket);
+			commander = name;
+			msgArr = fullmsg.split(" ");
+			order = msgArr[0];
+			toName = (msgArr.length>=2) ? msgArr[1] : "";
+			
+			//공백으로 쪼개진 스트링 배열의 메세지 부분을 다시 합침
+			for(int i=2 ; i<msgArr.length ; i++) {
+				msg = msg.append(" "+msgArr[i]);
+			}
+			
+			
+			switch (order) {
+			case "/list":
+				showList();	break;
+			case "/to":
+				whisper(); 	break;//귓속말을 셋팅하고 다시보낼때는 메세지만 입력하는데
+				//이경우에도 split이 실행되는 문제
+			case "/quiet":
+				quiet();
+				
+				break;
+			default:
+				System.out.println("잘못된 명령어입니다.");
+				System.out.println("/list : 접속자 리스트 보기");
+				System.out.println("/to [이름] [메세지] : 귓속말보내기");
+				System.out.println("/to [이름] : 귓속말 설정 고정/해제");
+				break;
+			}
+			
+		}
+		
+		void showList() {
+			Iterator<String> it	= clientMap.keySet().iterator();
+			while(it.hasNext()) {
+				out.println(it.next());
+			}
+		}
+
+		void whisper() {
+			if(msg.toString().equals("")) {
+				if(setWhisper==true) {
+					setWhisper  = false;
+					clientMap.get(commander).println(toName+"에게 귓속말 고정 해제");
+				}
+				else if(setWhisper==false) {
+					setWhisper  = true;
+					clientMap.get(commander).println(toName+"에게 귓속말 고정 설정");
+				}
+			}
+			else {//	/to 홍길동 안녕하세요
+				clientMap.get(toName).println("["+commander+"] : " + msg);
+			}
+		}
+		
+		void whisper(String msg) {
+			clientMap.get(toName).println("["+commander+"] : " + msg);
+		}
+		
+		void quiet() {
+			
+			
+			
+			Iterator<String> it = clientMap.keySet().iterator();
+			while(it.hasNext()) {
+				
+				
+				
+				
+				/*
+				//차단할 사람(toName)이 접속자중 (who)과 같으면 이사람 메세지는 ***처리
+				if(toName.equals(who)) {
+					clientMap.get(commander).println("["+toName+"] : " + "***");
+				}
+				else {
+					clientMap.get(toName).println("["+commander+"] : " + msg);
+				}
+				*/
+				
+				String who = it.next();
+				PrintWriter it_out = (PrintWriter)clientMap.get(who);
+				
+				
+				if(toName.equals(who) && msg.toString().equals("") ) {
+					setQuiet = setQuiet ? false : true ;
+				}
+				
+
+
+				if(commander.equals(who) ) {
+					//보낸사람과 보낼대상(who)과  같은경우 echo 설정
+					it_out.println(msg); 
+				}
+				else if(toName.equals(who)) {
+					//특정 사용자 차단.
+					it_out.println("["+who+"]: ****");
+					
+				}
+				else {
+					it_out.println("["+commander+"]: " + msg);
+				}
+			}
+			
+			
+			
+			
+		}
+		
+		
+	}//Command
 
 	
 	

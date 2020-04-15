@@ -30,12 +30,13 @@ public class Receiver extends Thread {
 		while (in != null) {
 			try {
 				System.out.println(
-						">>"+URLDecoder.decode(in.readLine(), "UTF-8"));
+						">"+URLDecoder.decode(in.readLine(), "UTF-8"));
 			} catch (SocketException e) {
 				System.out.println("SocketException 발생됨");
 				break;
 			} catch (Exception e) {
 				System.out.println("예외>Receiver>run1 : "+ e);
+				
 			}
 		}
 		try {
