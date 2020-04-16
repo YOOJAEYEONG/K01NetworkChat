@@ -29,8 +29,9 @@ public class MultiServer {
 	static ServerSocket serverSocket = null;
 	static Socket socket = null;
 	DBHandler dbHandler;
-	MultiServerT serverT;//널임
-	Thread mst;
+	HashSet<String> whisperSet;
+	HashMap<String,String> quietMap;
+	
 	
 	
 	//클라이언트 정보 저장을 위한 Map컬렉션 정의
@@ -40,11 +41,7 @@ public class MultiServer {
 	HashMap<Integer,InetAddress> blacklist = new HashMap<Integer,InetAddress>();;
 	HashMap<Integer,InetAddress> whitelist  = new HashMap<Integer,InetAddress>();;
 
-	//귓속말 그룹
-	HashSet<String> whisperSet = new HashSet<String>();
 	
-	//차단한 그룹
-	HashSet<String> quietSet = new HashSet<String>();
 	
 	InetAddress address;
 	
@@ -68,6 +65,8 @@ public class MultiServer {
 	//서버 초기화
 	public void init() {
 		try {
+			
+			
 			serverSocket = new ServerSocket(9999);
 			//서버시작후 DB테이블 생성 및 연동 준비
 			dbHandler = new DBHandler();
@@ -89,7 +88,7 @@ public class MultiServer {
 				}
 				
 				
-				mst = new MultiServerT(socket);
+				Thread mst = new MultiServerT(socket);
 				mst.start();
 			}
 		} catch (Exception e) {
@@ -106,7 +105,7 @@ public class MultiServer {
 	}
 	
 	
-
+	
 	//메인메소드 : Server객체를 생성하고 초기화한다
 	public static void main(String[] args) {
 		new MultiServer().init();
@@ -114,10 +113,12 @@ public class MultiServer {
 	}
 	
 	//접속된 모든 클라이언트에게 서버의 메세지를 echo해줌
-	public void sendAllMsg(String name, String msg, String toName) {
+	public void sendAllMsg(String name, String msg, String toName, boolean allmsg) {
 		
 		//Map에 저장된 객체의 키값(이름)을 먼저 얻어온다.
 		Iterator<String> it	= clientMap.keySet().iterator();
+		
+		
 		
 		while (it.hasNext()) {
 			try {
@@ -134,27 +135,28 @@ public class MultiServer {
 					System.out.println("1번");
 					it_out.println(URLEncoder.encode(msg, "UTF-8"));
 				}
-				else if(name.equals(who) ) {
-					//보낸사람과 보낼대상(who)과  같은경우 echo 설정
+				if(name.equals(who) ) {
+					//보낸사람과 보낼대상(who)과  같은경우 (내가 쓴글 나한테 표시)
 					System.out.println("2번");
 					it_out.println(msg); 
-				}
-				else if(quietSet.contains(toName) ) {
-					//차단한 사람이 보내는 메세지일경우
-					System.out.println("3번");
-					clientMap.get(who).println(who+"에게 전송이 실패하였습니다.");
 				}
 				else if(whisperSet.contains(who) ) {
 					//귓속말을을 설정한 사람이 있는 경우
 					System.out.println("4번");
 					clientMap.get(who).println("["+name+"] : " + msg);
+					allmsg=false;
 				}
-				else {
+				else if(quietMap.contains(name)) {
+					//차단한 사람이 보내는 메세지일경우
+					System.out.println("3번");
+					clientMap.get(name).println(who+"에게 전송이 실패하였습니다.");
+				}
+				else if(allmsg==true){
 					//전체 한테 보내는 메세지
+					
 					System.out.println("5번");
 					clientMap.get(who).println("["+name+"] : " + msg);
 				}
-				
 			} catch (Exception e) {
 				System.out.println("예외3: "+ e);
 				e.printStackTrace();
@@ -198,12 +200,15 @@ public class MultiServer {
 	//내부크래스
 	public class MultiServerT extends Thread {
 		
-		Scanner scan = new Scanner(System.in);
+		
+		
+		
+		
 		
 		
 		//멤버변수
 		Socket socket;
-		public rintWriter out = null;
+		PrintWriter out = null;
 		BufferedReader in = null;
 		
 		String name = "";
@@ -211,13 +216,27 @@ public class MultiServer {
 		String[] msgArr;
 		String order;
 		String toName = "";
-		boolean stoper = false;
+		String msg = "";
+		boolean allmsg = true;
+		
+		Scanner scan = new Scanner(System.in);
+		
+		
 		
 		public MultiServerT() {}
 		
 		
 		//생성자 : Socket을 기반으로 입출력 스트림을 생성한다.
 		public MultiServerT(Socket socket) {
+			
+			//귓속말 그룹
+			whisperSet = new HashSet<String>();
+			
+			//차단한 그룹
+			quietMap = new HashMap<String,String>();
+			
+			
+			
 			this.socket = socket;
 			try {
 				out = new PrintWriter(
@@ -235,9 +254,6 @@ public class MultiServer {
 		@Override
 		public void run() {
 			
-			
-			
-			
 			try {
 				name = in.readLine();
 				name = URLDecoder.decode(name, "UTF-8");
@@ -247,7 +263,7 @@ public class MultiServer {
 				
 				
 				
-				sendAllMsg("", name+" 님이 입장하셨습니다.","");
+				sendAllMsg(name, "님이 입장하셨습니다.","", true);
 				//현재 접속한 클라이언트를 HashMap에 저장한다.
 				clientMap.put(name, out);
 				dbHandler.execute(name, "[입장]");
@@ -268,38 +284,27 @@ public class MultiServer {
 					dbHandler.execute(name, s);
 					System.out.println(name + "> "+ s);
 					
-					
-					
-					msgArr = s.split(" ");
-					order = msgArr[0];
-					toName = (msgArr.length>=2) ? msgArr[1] : "";
-					
-					//공백으로 쪼개진 스트링 배열의 메세지 부분을 다시 합침
-					for(int i=2 ; i<msgArr.length ; i++) {
-						s = s.concat(" "+msgArr[i]);
-					}
-					
-					
-					
-					
 					//대화 금칙어 필터링
 					s = banWords(s);
 					
 					if(s == null ) break;
-					
-					
 					if(s.length()>1 && s.charAt(0)=='/') {
+						System.out.println("명령문이 입력됨");
+						msgArr = s.split(" ");
+						order = msgArr[0];
+						toName = (msgArr.length>=2) ? msgArr[1] : "";
+						msg = (msgArr.length>=3) ? msgArr[2] : "";
 						
+						//공백으로 쪼개진 스트링 배열의 메세지 부분을 다시 합침
+						for(int i=3 ; i<msgArr.length ; i++) {
+							msg = s.concat(" "+msgArr[i]);
+						}
 						
-						commands(name, s, toName, order);
-						
-						if(stoper==true)
-							continue;
-						
+						commands(name, msg, toName, order);			
 					}
 					
 					
-					sendAllMsg(name, s, toName);
+					sendAllMsg(name, s, toName, allmsg);
 					
 				}
 			} catch (Exception e) {
@@ -308,7 +313,7 @@ public class MultiServer {
 			finally {
 				
 				clientMap.remove(name);		
-				sendAllMsg("", name+"님이 퇴장하셨습니다.","");
+				sendAllMsg("", name+"님이 퇴장하셨습니다.","", true);
 				dbHandler.execute(name, "[퇴장]");
 				
 				//퇴장하는 클라이언트의 쓰레드명을 보여준다.
@@ -331,10 +336,11 @@ public class MultiServer {
 			
 		}//run()
 		
-		void commands(String name, String s, String toName, String order) {
+		void commands(String name, String msg, String toName, String order) {
 
 			switch (order) {
 			case "/help":
+				allmsg = false;
 				System.out.println("/list : 접속자 리스트 출력");
 				System.out.println("/to [이름] [메세지]: [이름]에게 귓속말 보내기");
 				System.out.println("/to [이름] : [이름]에게 귓속말 고정/해제");
@@ -343,10 +349,7 @@ public class MultiServer {
 				System.out.println("/showblacklist: 저장된 블랙리스트 확인");
 			break;
 			case "/list":
-				System.out.println(clientMap.keySet()+"111");
-				showUserList();
-				
-				break;
+				showUserList();	break;
 			case "/to":
 				whisper(); 	break;
 			case "/quiet":
@@ -367,7 +370,14 @@ public class MultiServer {
 			
 		}
 		
-		
+		public void help() {
+			clientMap.get(name).println("/list : 접속자 리스트 출력");
+			clientMap.get(name).println("/to [이름] [메세지]: [이름]에게 귓속말 보내기");
+			clientMap.get(name).println("/to [이름] : [이름]에게 귓속말 고정/해제");
+			clientMap.get(name).println("/quiet [이름] : [이름]의 대화 차단/해제");
+			clientMap.get(name).println("/addblacklist: 블랙리스트에 해당IP 추가");
+			clientMap.get(name).println("/showblacklist: 저장된 블랙리스트 확인");
+		}
 		
 		public void showUserList() {
 			
@@ -380,90 +390,51 @@ public class MultiServer {
 				
 			}
 			
-			order = null;
+			allmsg = false;
 			
 			
 		}
 		
 		void whisper() {
-			
-			if(s.toString().equals("")) {
+			if(msg.equals("")) {
+				System.out.println("msg가없을때");
 				if(whisperSet.add(toName)) {
 					clientMap.get(name).println(toName+"에게 귓속말 고정 설정");
+					clientMap.get(name).println("귓속말 고정 목록 : "+whisperSet);
+					allmsg = false;
 				}
 				else if(whisperSet.remove(toName)){
 					clientMap.get(name).println(toName+"에게 귓속말 고정 해제");
+					clientMap.get(name).println("귓속말 고정 목록 : "+whisperSet);
+					
+					allmsg = true;
 				}
 			}
 			else {//	/to 홍길동 안녕하세요
-				//clientMap.get(toName).println("["+name+"] : " + s);
-				stoper = true;
+				
+				clientMap.get(toName).println("["+name+"] : " + msg);
+				allmsg = false;
+				
 			}
 		}
 		
-//		void whisper(String s) {
-//			clientMap.get(toName).println("["+name+"] : " + s);
-//		}
+
 		
 		void quiet() {
 			
-			if(quietSet.add(toName)) {
+			if(quietMap.put(name,toName)) {
 				clientMap.get(name).println(toName+"차단 설정");
+				clientMap.get(name).println("차단된 사용자 목록:"+quietMap);
+				allmsg = false;
 			}
-			else if(quietSet.remove(toName)) {
+			else if(quietMap.remove(toName)) {
 				clientMap.get(name).println(toName+"차단 해제");
+				clientMap.get(name).println("차단된 사용자 목록:"+quietSet);
+				allmsg = true;
 			}
-			
-			
-			/*
-			Iterator<String> it = server.clientMap.keySet().iterator();
-			while(it.hasNext()) {
-				
-				String who = it.next();
-				PrintWriter it_out = (PrintWriter)server.clientMap.get(who);
-				
-				
-				if(toName.equals(who) && msg.toString().equals("") ) {
-					
-					
-					
-					
-					
-					if(serverT.setQuiet==true) {
-						server.clientMap.get(commander).println(toName+"의 대화 차단");
-						serverT.toQuiet = toName;
-					}
-					if(serverT.setQuiet==false) {
-						server.clientMap.get(commander).println(toName+"의 대화 허용");
-						serverT.toQuiet = "";
-					}
-				}
-				
-				
-
-
-				if(commander.equals(who) ) {
-					//보낸사람과 보낼대상(who)과  같은경우 echo 설정
-					it_out.println(msg); 
-				}
-				else if(toName.equals(who)) {
-					//특정 사용자 차단.
-					
-					server.clientMap.get(commander).println("["+toName+"] : " + "***");
-					
-					
-				}
-				else {
-					it_out.println("["+commander+"]: " + msg);
-				}
-			}
-			*/
 		}
 		
-		void quiet(String s) {
-			clientMap.get(toName).println("["+name+"] : " + s);
-		}
-		
+
 		
 		void addBlackList() {
 			
@@ -494,6 +465,10 @@ public class MultiServer {
 		
 	}//내부클래스 : MultiServerT
 
+	class Blacklist {
+		String blocker; //차단한 사람
+		String blocked; //차단된 사람
+	}
 	
 	
 }
