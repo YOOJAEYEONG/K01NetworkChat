@@ -54,6 +54,8 @@ public class MultiServer {
 		//HashMap동기화 설정. 쓰레드가 사용자정보에 동시에 접근하는것을 차단한다.
 		Collections.synchronizedMap(clientMap);
 		
+		
+		//서버 적용 금칙어
 		banWords.add("엿");
 		banWords.add("멍청이");
 		banWords.add("바보");
@@ -274,6 +276,7 @@ public class MultiServer {
 						System.out.println("명령문이 입력됨");
 						msgArr = msg.split(" ");
 						
+//						/to 홍길동 뭐하냐 지금
 						order = msgArr[0];
 						toName = (msgArr.length>=2) ? msgArr[1] : "";
 						msg = (msgArr.length>=3) ? msgArr[2] : "";
@@ -329,6 +332,8 @@ public class MultiServer {
 				addBlackList();		break;
 			case "/showblacklist":
 				showBlackList();	break;
+			case "/addbanword":
+				addBanWord();	break;
 			default:
 				clientMap.get(name).println("잘못된 명령어입니다.");
 				clientMap.get(name).println("/help : 명령어 보기");
@@ -429,7 +434,26 @@ public class MultiServer {
 			}
 		}
 		
-		
+		void addBanWord() {
+			clientMap.get(name).println("추가할 금칙어를 입력하세요.");
+			String newBan;
+			try {
+				newBan = in.readLine();
+				newBan = URLDecoder.decode(newBan, "UTF-8");
+				banWords.add(newBan);
+				Iterator<String> it = banWords.iterator();
+				
+				clientMap.get(name).println("설정된 금칙어 리스트");
+				while(it.hasNext()) {
+					String word = it.next();
+					clientMap.get(name).println(word);
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			
+			
+		}
 
 		
 	}//내부클래스 : MultiServerT
