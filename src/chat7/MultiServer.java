@@ -1,6 +1,7 @@
 package chat7;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
@@ -10,6 +11,7 @@ import java.net.Socket;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.Base64.Decoder;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -17,15 +19,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Scanner;
 
-/*
-MultiServer
-	ㄴsendAllMsg() - toName 호출 시도
-	MultiServerT
-		Commands
-			ㄴtoName
-				
-				
- */
+
 public class MultiServer {
 
 	static ServerSocket serverSocket = null;
@@ -42,15 +36,12 @@ public class MultiServer {
 	
 	
 	//클라이언트 정보 저장을 위한 Map컬렉션 정의
-	Map<String, PrintWriter> clientMap= new HashMap<String, PrintWriter>();;
+	Map<String, PrintWriter> clientMap= new HashMap<String, PrintWriter>();
 	
 	//클라이언트의 IP주소를 저장할 set컬렉션
-	HashMap<Integer,InetAddress> blacklist = new HashMap<Integer,InetAddress>();;
-	HashMap<Integer,InetAddress> whitelist  = new HashMap<Integer,InetAddress>();;
-
-	
-	
-	
+	HashMap<Integer,InetAddress> blacklist = new HashMap<Integer,InetAddress>();
+	HashMap<Integer,InetAddress> whitelist  = new HashMap<Integer,InetAddress>();
+	//금칙어를 설정한 단어들을 저장
 	HashSet<String> banWords = new HashSet<String>();
 	
 	
@@ -62,8 +53,6 @@ public class MultiServer {
 		
 		//HashMap동기화 설정. 쓰레드가 사용자정보에 동시에 접근하는것을 차단한다.
 		Collections.synchronizedMap(clientMap);
-		
-		
 		
 		banWords.add("엿");
 		banWords.add("멍청이");
@@ -80,7 +69,6 @@ public class MultiServer {
 			dbHandler = new DBHandler();
 			
 			
-			
 			while (true) {				
 				socket = serverSocket.accept();
 				System.out.println( "신규접속IP"+socket.getInetAddress() );
@@ -94,7 +82,6 @@ public class MultiServer {
 					System.out.println(address+"는 차단되었습니다." );
 					continue;
 				}
-				
 				
 				Thread mst = new MultiServerT(socket);
 				mst.start();
@@ -125,7 +112,6 @@ public class MultiServer {
 		
 		//Map에 저장된 객체의 키값(이름)을 먼저 얻어온다.
 		Iterator<String> it	= clientMap.keySet().iterator();
-		Iterator<Relation> whisper = whisperSet.iterator();
 		
 		
 		while (it.hasNext()) {
@@ -146,8 +132,6 @@ public class MultiServer {
 					if(whisperSet.add(test)) {
 						whisperSet.remove(test);
 						allmsg=true;
-						
-						//clientMap.get(who).println("111");
 					}
 					else {
 						clientMap.get(who).println("["+name+"] : " + msg);
@@ -167,11 +151,9 @@ public class MultiServer {
 						clientMap.get(name).println(
 								who+"에게 전송이 실패하였습니다.");
 					}
-					
 				}
 				else if(allmsg==true){
 					//전체 한테 보내는 메세지
-					
 					System.out.println("4번");
 					clientMap.get(who).println("["+name+"] : " + msg);
 				}
@@ -241,12 +223,6 @@ public class MultiServer {
 		//생성자 : Socket을 기반으로 입출력 스트림을 생성한다.
 		public MultiServerT(Socket socket) {
 			
-			/*
-			//차단한 그룹
-			quietSet = new HashSet<Relation>();
-			//귓속말 그룹
-			whisperSet = new HashSet<Relation>();
-			*/
 			this.socket = socket;
 			try {
 				out = new PrintWriter(
@@ -335,10 +311,6 @@ public class MultiServer {
 					e.printStackTrace();
 				}
 			}
-			
-
-			
-			
 			
 		}//run()
 		
@@ -430,6 +402,9 @@ public class MultiServer {
 
 		
 		void addBlackList() {
+			
+			String i=null;;
+			
 			clientMap.get(name).println("추가할 IP선택");
 			int key = 0;
 			while(key<whitelist.size()) {
@@ -437,11 +412,13 @@ public class MultiServer {
 			}
 			
 			clientMap.get(name).println("차단설정할 IP주소를 선택하시오");
-			
-			
-			InetAddress address = whitelist.get(2);
-			System.out.println("블랙리스트추가 "+ blacklist.put(blacklist.size(), address));
-			clientMap.get(name).println("블랙리스트추가 "+ blacklist.put(blacklist.size(), address));
+			try {
+				i = in.readLine();
+				i = URLDecoder.decode(i, "UTF-8");
+			} catch (IOException e) { }
+			blacklist.put(blacklist.size(), address);
+			InetAddress address = whitelist.get(Integer.parseInt(i));
+			clientMap.get(name).println("블랙리스트추가 "+ address );
 			
 		}
 		
