@@ -424,7 +424,7 @@ public class MultiServer {
 		
 		void showBlackList() {
 			int key = 0;
-			while(key<=blacklist.size()) {
+			while(key<blacklist.size()) {
 				clientMap.get(name).println(key+"번"+blacklist.get(key++));
 			}
 		}
