@@ -1,6 +1,8 @@
 package chat6;
 
 import java.io.BufferedReader;
+import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
@@ -29,7 +31,7 @@ public class MultiServer {
 	//서버 초기화
 	public void init() {
 		try {
-			serverSocket = new ServerSocket(9999);
+			serverSocket = new ServerSocket(9999, 5);
 			System.out.println("서버가 시작되었습니다.");
 
 			/*
@@ -37,9 +39,11 @@ public class MultiServer {
 			쓰레드 생성및 start.
 			*/
 			while (true) {
+				System.out.println(1);
 				socket = serverSocket.accept();
-				
+				System.out.println(2);
 				Thread mst = new MultiServerT(socket);
+				System.out.println(3);
 				mst.start();
 			}
 		} catch (Exception e) {
@@ -104,6 +108,7 @@ public class MultiServer {
 		public MultiServerT(Socket socket) {
 			this.socket = socket;
 			try {
+				
 				out = new PrintWriter(
 						this.socket.getOutputStream(), true);
 				in = new BufferedReader(
@@ -125,6 +130,8 @@ public class MultiServer {
 			try {
 				//클라이언트의 이름을 읽어와서 저장
 				name = in.readLine();
+				System.out.println("바로 출력:"+name);
+				//readUTF()
 				//접속한 클라이언트에게 새로운 사용자의 입장을 알림.
 				//이 접속자는 아직 해쉬맵에 저장되기 전이므로 
 				//접속자를 제외한 나머지 클라이언트만 입장메세지를 받는다.

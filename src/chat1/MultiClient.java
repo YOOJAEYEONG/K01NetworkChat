@@ -21,6 +21,8 @@ public class MultiClient {
 		
 		
 		try {
+			/*console에서 이름을 입력할때 이름 [매개변수] 형식으로 한칸띄고 입력하면
+			 	매개변수로 입력이 된다.*/
 			//별도의 매개변수가 없으면 접속IP는  localhost로 고정됨
 			
 			String ServerIP = "localhost";
